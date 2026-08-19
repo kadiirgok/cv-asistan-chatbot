@@ -19,7 +19,52 @@ emin olmadığında asla uydurmuyor, dürüstçe kaynağı gösteriyor.
 
 ---
 
-## Mimari 
+## Mimari
+
+```mermaid
+flowchart TD
+    A["Kullanıcı Sorusu<br/>Web UI · Flutter"] --> B["FastAPI /chat<br/>src/api.py"]
+    B --> C["generate_answer<br/>src/rag.py"]
+
+    C --> D["Retrieval<br/>retrieval_araci()"]
+    D --> D1["Soru Embedding<br/>Türkçe BERT"]
+    D1 --> D2["ChromaDB query<br/>top_k=4 · source != web"]
+    D2 --> D3["Mesafe eşiği (490)"]
+    D3 --> D4["Kaynak çoğunluk oyu<br/>+ leksikal tie-break"]
+
+    D4 -- "bağlam var" --> E["Konu uyumu kontrolü<br/>dogrula_konu_uyumu()"]
+    D4 -- "bağlam yok" --> G["Web fallback<br/>web_search_araci() · DuckDuckGo"]
+
+    E -- "uyumlu" --> F["LLM<br/>Qwen2.5-3B · llama.cpp"]
+    E -- "uyumsuz" --> X["Cevap: bilgi yok<br/>kaynak = none"]
+
+    G -- "sonuç var" --> H["Konu uyumu kontrolü<br/>dogrula_konu_uyumu()"]
+    G -- "sonuç yok" --> X
+    H -- "uyumlu" --> I["LLM (web prompt)<br/>temperature = 0"]
+    H -- "uyumsuz" --> X
+
+    F --> J["Doğrulama ağı<br/>sayısal tutarlılık + eksik değer"]
+    I --> J
+
+    J -- "geçti" --> K["Cevap + şeffaf rozet<br/>kaynak · dogrulandi"]
+    J -- "başarısız" --> L["Ham kaynak fallback<br/>dogrulandi = false"]
+
+    K --> M["Yanıt<br/>cevap · kaynak · sure_saniye · dogrulandi"]
+    L --> M
+    X --> M
+```
+
+Akış uçtan uca: soru `src/api.py` içindeki `/chat` uç noktasına gelir,
+iş mantığı `src/rag.py` içindeki `generate_answer()` fonksiyonunda
+yürütülür. Önce yerel vektör deposunda (ChromaDB) arama yapılır;
+alakalı bağlam yoksa DuckDuckGo üzerinden web fallback'e geçilir. Her
+iki yolda da üretilen cevap, modele gönderilmeden önce konu uyumu,
+sonrasında ise sayısal tutarlılık + eksik değer kontrollerinden geçer.
+
+**Bileşenler:** FastAPI (HTTP + statik arayüz) · ChromaDB (kalıcı vektör
+deposu) · Türkçe BERT embedding · llama.cpp üzerinden Qwen2.5-3B ·
+DuckDuckGo (ddgs) · üç katmanlı doğrulama ağı.
+
 ---
 
 ## Teknik Kararlar ve Gerekçeleri
