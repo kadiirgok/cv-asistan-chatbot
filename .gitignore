@@ -5,3 +5,10 @@ __pycache__/
 *.pyc
 .env
 *.log
+
+# Flutter (mobile/)
+mobile/build/
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/*.iml

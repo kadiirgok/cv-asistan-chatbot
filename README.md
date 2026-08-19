@@ -128,6 +128,24 @@ aynı soru ikinci kez sorulduğunda 3-4 kat daha hızlı yanıtlanıyor.
 
 ---
 
+## Mobil Uygulama
+
+Flutter ile yazılmış mobil uygulama, bu repodaki `mobile/` klasöründe
+durur. Apple/iMessage tarzı bir sohbet arayüzüne sahiptir ve backend'in
+aynı `/chat` API'sine bağlanır. Çalıştırmak için:
+
+```bash
+cd mobile
+flutter run
+```
+
+> Backend adresi `mobile/lib/api_service.dart` içindeki `apiBaseUrl`
+> alanından ayarlanır (varsayılan `http://10.0.2.2:8000` — Android
+> emülatörü içindir). Gerçek bir cihazda test ederken bu adresi
+> bilgisayarının ağ IP'si ile değiştir.
+
+---
+
 ## Kullanılan Teknolojiler
 
 **Model & RAG:** Qwen2.5-3B-Instruct (GGUF, q4_k_m), llama-cpp-python,
