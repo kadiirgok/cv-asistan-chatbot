@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CV Asistanı</title>
+
+<!-- Inter fontu (Google Fonts CDN) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #F2F2F7;            /* sayfa arka planı (açık iOS gri) */
+    --surface: #FFFFFF;       /* sohbet kutusu yüzeyi */
+    --hairline: #E5E5EA;      /* ince ayraç çizgileri */
+    --text: #1C1C1E;
+    --muted: #8E8E93;
+    --blue: #007AFF;          /* Apple mavisi */
+    --blue-press: #0069E0;
+    --blue-disabled: #B3D4FF;
+    --user-bubble: #007AFF;
+    --asst-bubble: #E9E9EB;   /* açık gri balon */
+    --input-bg: #F2F2F7;
+    --ok-bg: #E6F7EE;
+    --ok-fg: #157347;
+    --warn-bg: #FFF1E0;
+    --warn-fg: #B45309;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* --- Sohbet kutusu: masaüstünde max-width ile ortalanır, mobilde tam genişlik --- */
+  .app {
+    width: 100%;
+    max-width: 760px;
+    height: 100vh;
+    height: 100dvh;
+    margin: 0 auto;
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 0 1px rgba(0,0,0,.03), 0 8px 40px rgba(0,0,0,.06);
+  }
+  @media (max-width: 760px) {
+    .app { box-shadow: none; }
+  }
+
+  /* --- Üst çubuk: sade, ince alt çizgili --- */
+  .topbar {
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--hairline);
+    flex-shrink: 0;
+  }
+  .topbar h1 { margin: 0; font-size: 19px; font-weight: 700; letter-spacing: -0.01em; }
+  .topbar .subtitle { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
+
+  /* --- Örnek soru chip'leri --- */
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 16px;
+    flex-shrink: 0;
+  }
+  .chip {
+    background: var(--surface);
+    color: var(--blue);
+    border: 1px solid var(--hairline);
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    transition: transform .15s ease, box-shadow .15s ease, background .15s ease,
+                border-color .15s ease, opacity .15s ease;
+  }
+  .chip:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(0,0,0,.10);
+    border-color: var(--blue);
+    background: #F2F7FF;
+  }
+  .chip:active { transform: translateY(0) scale(.97); box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .chip:disabled {
+    opacity: .45;
+    cursor: default;
+    transform: none;
+    box-shadow: none;
+    border-color: var(--hairline);
+    background: var(--surface);
+    color: var(--muted);
+  }
+
+  /* --- Mesaj alanı --- */
+  .chat {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    overscroll-behavior: contain;
+  }
+  .chat::-webkit-scrollbar { width: 6px; }
+  .chat::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 3px; }
+  .chat::-webkit-scrollbar-track { background: transparent; }
+
+  /* --- Boş durum: ortalanmış karşılama --- */
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 32px;
+    gap: 6px;
+  }
+  .empty-icon {
+    width: 92px; height: 92px;
+    border-radius: 26px;
+    background: #EAF2FF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+  }
+  .empty-state h2 { margin: 0; font-size: 20px; font-weight: 600; color: var(--text); }
+  .empty-state p { margin: 0; max-width: 360px; font-size: 14px; line-height: 1.55; color: var(--muted); }
+
+  /* --- Mesaj balonları --- */
+  .msg-row {
+    display: flex;
+    flex-direction: column;
+    max-width: 78%;
+    animation: msg-in .28s cubic-bezier(.2,.8,.3,1);
+  }
+  .msg-row.user { align-self: flex-end; align-items: flex-end; }
+  .msg-row.assistant { align-self: flex-start; align-items: flex-start; }
+
+  .bubble {
+    padding: 10px 14px;
+    border-radius: 18px;
+    line-height: 1.45;
+    font-size: 15px;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  .msg-row.user .bubble {
+    background: var(--user-bubble);
+    color: #fff;
+    border-bottom-right-radius: 5px;   /* sağ-alt köşe hafif keskin */
+  }
+  .msg-row.assistant .bubble {
+    background: var(--asst-bubble);
+    color: var(--text);
+    border-bottom-left-radius: 5px;    /* sol-alt köşe hafif keskin */
+  }
+
+  @keyframes msg-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* --- Kaynak / doğrulama rozeti (pill) --- */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 5px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 500;
+    line-height: 1.4;
+    background: var(--ok-bg);
+    color: var(--ok-fg);
+  }
+  .badge.warn { background: var(--warn-bg); color: var(--warn-fg); }
+  .badge-icon { display: inline-flex; }
+  .badge-icon svg { display: block; }
+
+  /* --- Yazıyor... göstergesi (üç zıplayan nokta) --- */
+  .typing-dots { display: inline-flex; align-items: center; gap: 5px; padding: 3px 2px; }
+  .typing-dots .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #A6A6AC;
+    animation: bounce 1.2s infinite ease-in-out;
+  }
+  .typing-dots .dot:nth-child(2) { animation-delay: .15s; }
+  .typing-dots .dot:nth-child(3) { animation-delay: .3s; }
+  @keyframes bounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30%           { transform: translateY(-5px); }
+  }
+
+  /* --- Alt yazma çubuğu --- */
+  .composer {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--hairline);
+    flex-shrink: 0;
+    background: var(--surface);
+  }
+  .composer input {
+    flex: 1;
+    background: var(--input-bg);
+    border: 1px solid #E0E0E5;
+    border-radius: 22px;
+    padding: 11px 16px;
+    font-size: 15px;
+    font-family: inherit;
+    color: var(--text);
+    outline: none;
+    transition: border-color .15s ease, background .15s ease;
+  }
+  .composer input::placeholder { color: var(--muted); }
+  .composer input:focus { border-color: var(--blue); background: #fff; }
+  .composer input:disabled { opacity: .6; }
+
+  .send-btn {
+    width: 40px; height: 40px;
+    flex-shrink: 0;
+    border: none;
+    border-radius: 50%;
+    background: var(--blue);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background .15s ease, transform .1s ease;
+  }
+  .send-btn:hover { background: var(--blue-press); }
+  .send-btn:active { transform: scale(.92); }
+  .send-btn:disabled { background: var(--blue-disabled); cursor: default; transform: none; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <h1>CV Asistanı</h1>
+    <p class="subtitle">Abdulkadir'in projeleri hakkında sor</p>
+  </header>
+
+  <div class="chips" id="chips">
+    <button class="chip">BilgiTR'de hit-rate nedir?</button>
+    <button class="chip">HizmetGelsin'in teknolojileri neler?</button>
+    <button class="chip">Telco churn'de recall nasıl iyileşti?</button>
+    <button class="chip">YorumTR'de hangi yöntem daha iyi?</button>
+  </div>
+
+  <main class="chat" id="chat">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">
+        <svg viewBox="0 0 24 24" width="46" height="46" fill="none" stroke="#007AFF"
+             stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+        </svg>
+      </div>
+      <h2>Merhaba 👋</h2>
+      <p>Abdulkadir'in projeleri (BilgiTR, YorumTR, HizmetGelsin, Telco&nbsp;Churn) hakkında soru sorabilirsin. Yukarıdaki örneklerden birine tıklayarak başlayabilirsin.</p>
+    </div>
+  </main>
+
+  <footer class="composer">
+    <input id="input" type="text" placeholder="Bir proje hakkında soru sor..."
+           autocomplete="off" aria-label="Soru" />
+    <button id="send" class="send-btn" aria-label="Gönder" title="Gönder">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
+        <path d="M12 19V5m0 0-7 7m7-7 7 7" stroke="#fff" stroke-width="2.4"
+              stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+  </footer>
+</div>
+
+<script>
+  const chat = document.getElementById('chat');
+  const emptyState = document.getElementById('emptyState');
+  const chipsWrap = document.getElementById('chips');
+  const input = document.getElementById('input');
+  const sendBtn = document.getElementById('send');
+
+  // Küçük inline ikonlar (rozet için)
+  const CHECK_ICON =
+    '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true">' +
+    '<path d="M3 8.5l3 3 7-7" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const WARN_ICON =
+    '<svg viewBox="0 0 16 16" width="12" height="12" fill="none" aria-hidden="true">' +
+    '<path d="M8 2 1.5 13h13L8 2Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>' +
+    '<path d="M8 6.5v3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>' +
+    '<circle cx="8" cy="11" r="0.9" fill="currentColor"/></svg>';
+
+  function hideEmpty() {
+    if (emptyState) emptyState.style.display = 'none';
+  }
+
+  function scrollToBottom() {
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function addMessage(role, text, meta) {
+    hideEmpty();
+
+    const row = document.createElement('div');
+    row.className = 'msg-row ' + role;
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text;
+    row.appendChild(bubble);
+
+    // Yalnızca asistan cevaplarına kaynak/doğrulama rozeti ekle.
+    // "none" (bilgi yok) durumunda doğrulanacak bir kaynak olmadığı için rozet atlanır.
+    if (role === 'assistant' && meta && meta.kaynak !== 'none') {
+      row.appendChild(makeBadge(meta));
+    }
+
+    chat.appendChild(row);
+    scrollToBottom();
+  }
+
+  function makeBadge(meta) {
+    const verified = !!meta.dogrulandi;
+    const badge = document.createElement('div');
+    badge.className = 'badge' + (verified ? '' : ' warn');
+
+    const icon = document.createElement('span');
+    icon.className = 'badge-icon';
+    icon.innerHTML = verified ? CHECK_ICON : WARN_ICON;
+
+    const kaynak = ({ local: 'local', web: 'web', none: 'kaynak yok' })[meta.kaynak]
+      || meta.kaynak || '?';
+    const sure = (meta.sure_saniye != null)
+      ? Number(meta.sure_saniye).toFixed(1).replace('.0', '') + 'sn'
+      : '';
+
+    const parts = [verified ? 'Doğrulandı' : 'Doğrulanamadı', kaynak, sure].filter(Boolean);
+
+    const text = document.createElement('span');
+    text.className = 'badge-text';
+    text.textContent = parts.join(' · ');
+
+    badge.appendChild(icon);
+    badge.appendChild(text);
+    return badge;
+  }
+
+  function showTyping() {
+    const row = document.createElement('div');
+    row.className = 'msg-row assistant';
+    row.id = 'typing';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.innerHTML =
+      '<span class="typing-dots" aria-label="yazıyor">' +
+      '<span class="dot"></span><span class="dot"></span><span class="dot"></span>' +
+      '</span>';
+
+    row.appendChild(bubble);
+    chat.appendChild(row);
+    scrollToBottom();
+  }
+
+  function hideTyping() {
+    const el = document.getElementById('typing');
+    if (el) el.remove();
+  }
+
+  // Flutter'daki gibi: cevap gelene kadar tüm chip'ler + gönder butonu pasif.
+  function setBusy(busy) {
+    sendBtn.disabled = busy;
+    input.disabled = busy;
+    chipsWrap.querySelectorAll('.chip').forEach((c) => { c.disabled = busy; });
+  }
+
+  async function send(question) {
+    question = (question || input.value).trim();
+    if (!question || sendBtn.disabled) return;
+
+    addMessage('user', question);
+    input.value = '';
+    setBusy(true);
+    showTyping();
+
+    try {
+      const res = await fetch('/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ soru: question })
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      hideTyping();
+      addMessage('assistant', data.cevap || '(boş cevap)', data);
+    } catch (err) {
+      hideTyping();
+      addMessage('assistant', 'Bir hata oluştu: ' + err.message);
+    } finally {
+      setBusy(false);
+      input.focus();
+    }
+  }
+
+  chipsWrap.addEventListener('click', (e) => {
+    const chip = e.target.closest('.chip');
+    if (chip) send(chip.textContent);
+  });
+
+  sendBtn.addEventListener('click', () => send());
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  });
+</script>
+</body>
+</html>
